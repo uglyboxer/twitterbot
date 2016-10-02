@@ -62,6 +62,7 @@ class Bot:
 
 
     def clean_tweet(self, tweet):
+        """ Strip # character and @usernames out of tweet """
         filter_list = []
         tweet_list = tweet.split()
         for word in tweet_list:
@@ -72,11 +73,6 @@ class Bot:
 
 
 bot = Bot()
-# while True:
-    # message = get_message() # TODO Whatever generates the cool stuff
-    # bot.tweet(message)
-    # sleep_time = 900 + random.randint(1, 100)
-    # time.sleep(sleep_time)
 
 while True:
     for tweet in bot.tag_search('sarcasm', 100):
@@ -102,7 +98,3 @@ while True:
     m = str(bot.clean_tweet(m.text) + suffix)
     bot.tweet(m)
     time.sleep(60*10 + random.randint(1, 80))
-
-
-
-
