@@ -1,21 +1,19 @@
 from secrets import *
+from model import Tweet
+
+from peewee import fn
 
 import tweepy, time, random
-
-auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
-api = tweepy.API(auth)
-
 
 class Bot:
 
     def __init__(self):
         self.auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-        auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
+        self.auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
         self.api = tweepy.API(self.auth)
 
     def tweet(self, message):
-        self.update_status(message)
+        self.api.update_status(message)
         return True
 
     def tag_search(self, string, quantity=1):
@@ -31,13 +29,17 @@ class Bot:
         @brief     This will pull off hash tags just at the end of
                    tweet.  If your tag is not in the ending list
                    the tweet will not be returned
+                   Tweets with links are ignored, in case the tag 
+                   refers to the link and not the text
         
         @param      self   The object
         @param      tweet  The tweet
         @param      tag    The tag
         
-        @return     the tweet, minus ending tags or False
+        @return     the tweet, minus ending tags and the list of tags
+                    or False
         """
+
         if 'http' in tweet:
             return False
         else:
@@ -53,7 +55,10 @@ class Bot:
         length = len(tweet_list) - len(tag_list)
         tagless_list = tweet_list[:length]
 
-        return " ".join(tagless_list).replace("#", "") 
+        tweet = " ".join(tagless_list).replace("#", "")
+        Tweet.create_or_get(text=tweet)
+
+        return {'text': tweet, 'tags': tag_list}
 
 
     def clean_tweet(self, tweet):
@@ -65,6 +70,7 @@ class Bot:
                 filter_list.append(word)
         return " ".join(filter_list)
 
+
 bot = Bot()
 # while True:
     # message = get_message() # TODO Whatever generates the cool stuff
@@ -72,8 +78,27 @@ bot = Bot()
     # sleep_time = 900 + random.randint(1, 100)
     # time.sleep(sleep_time)
 
-for tweet in bot.tag_search('sarcasm', 100):
-    t = bot._filter_harsh(tweet, 'sarcasm')
-    if t:
-        print(bot.clean_tweet(t))
+while True:
+    for tweet in bot.tag_search('sarcasm', 100):
+        t = bot._filter_harsh(tweet, 'sarcasm')
+        if t:
+            print(bot.clean_tweet(t['text']))
+    print(Tweet.select().count())
+    msg = Tweet.select().order_by(fn.Random()).limit(1)
+    for m in msg:
+        print(m.text)
+    prefix = random.choice(["Aces? ... ",
+                            "Well, I guess ... ",
+                            "On Tuesdays? ... ",
+                            "So serious ... ",
+                            "How do you really feel? ... ",
+                            "By the heavens! ... ",
+                            "Quick! To the batphone ...",
+                            "Well, I'm not so sure ..."])
+    m = prefix + str(bot.clean_tweet(m.text))
+    bot.tweet(m)
+    time.sleep(60*10 + random.randint(1, 80))
+
+
+
 
