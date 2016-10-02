@@ -87,15 +87,15 @@ while True:
     msg = Tweet.select().order_by(fn.Random()).limit(1)
     for m in msg:
         print(m.text)
-    prefix = random.choice(["Aces? ... ",
-                            "Well, I guess ... ",
-                            "On Tuesdays? ... ",
-                            "So serious ... ",
-                            "How do you really feel? ... ",
-                            "By the heavens! ... ",
-                            "Quick! To the batphone ...",
-                            "Well, I'm not so sure ..."])
-    m = prefix + str(bot.clean_tweet(m.text))
+    suffix = random.choice([" ... Aces?",
+                            " ... Well, I guess.",
+                            " ... On Tuesdays?",
+                            " ... So serious.",
+                            " ... How do you really feel?",
+                            " ... By the heavens!",
+                            " ... Quick! To the batphone.",
+                            " ... Well, I'm not so sure."])
+    m = str(bot.clean_tweet(m.text) + suffix)
     bot.tweet(m)
     time.sleep(60*10 + random.randint(1, 80))
 
