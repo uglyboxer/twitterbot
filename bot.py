@@ -18,13 +18,32 @@ class Bot:
         self.update_status(message)
         return True
 
-    def tag_search(self, string):
+    def tag_search(self, string, quantity=1):
         search_tag = '#{}'.format(string)
         tweet_list = self.api.search(q=search_tag, 
-                                     count=10,
+                                     count=quantity,
                                      lang='en')
         tweets = [x.text for x in tweet_list]
         return tweets
+
+    def _filter_harsh(self, tweet, tag):
+        if 'http' in tweet:
+            return False
+        else:
+            tweet_list = tweet.split()
+            tag_list = []
+            for word in reversed(tweet_list):
+                if word[0] == "#":
+                    tag_list.append(word[1:])
+                else:
+                    break
+            if tag not in tag_list:
+                return False
+        length = len(tweet_list) - len(tag_list)
+        tagless_list = tweet_list[:length]
+
+        return " ".join(tagless_list).replace("#", "") 
+
 
     def clean_tweet(self, tweet):
         filter_list = []
@@ -42,10 +61,8 @@ bot = Bot()
     # sleep_time = 900 + random.randint(1, 100)
     # time.sleep(sleep_time)
 
-for tweet in bot.tag_search('sarcasm'):
+for tweet in bot.tag_search('sarcasm', 100):
+    t = bot._filter_harsh(tweet, 'sarcasm')
+    if t:
+        print(bot.clean_tweet(t))
 
-    print(bot.clean_tweet(tweet))
-
-for tweet in bot.tag_search('snark'):
-
-    print(bot.clean_tweet(tweet))
