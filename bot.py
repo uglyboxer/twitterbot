@@ -27,6 +27,17 @@ class Bot:
         return tweets
 
     def _filter_harsh(self, tweet, tag):
+        """
+        @brief     This will pull off hash tags just at the end of
+                   tweet.  If your tag is not in the ending list
+                   the tweet will not be returned
+        
+        @param      self   The object
+        @param      tweet  The tweet
+        @param      tag    The tag
+        
+        @return     the tweet, minus ending tags or False
+        """
         if 'http' in tweet:
             return False
         else:
