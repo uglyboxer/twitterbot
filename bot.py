@@ -83,6 +83,10 @@ while True:
         t = bot._filter_harsh(tweet, 'sarcasm')
         if t:
             print(bot.clean_tweet(t['text']))
+    for tweet in bot.tag_search('sarcastic', 100):
+        t = bot._filter_harsh(tweet, 'sarcastic')
+        if t:
+            print(bot.clean_tweet(t['text']))
     print(Tweet.select().count())
     msg = Tweet.select().order_by(fn.Random()).limit(1)
     for m in msg:
