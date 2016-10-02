@@ -7,5 +7,7 @@ auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
 api = tweepy.API(auth)
 
 while True:
-    api.update_status('Howdy' + str(random.randrange(100)))
-    time.sleep(120)
+    message = get_message() # TODO Whatever generates the cool stuff
+    api.update_status(message)
+    sleep_time = 900 + random.randint(1, 100)
+    time.sleep(sleep_time)
