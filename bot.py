@@ -71,30 +71,42 @@ class Bot:
                 filter_list.append(word)
         return " ".join(filter_list)
 
+    def remove_hash_symbol(self, tweet):
+        return tweet.replace("#", "")
 
-bot = Bot()
+    def remove_at_symbol(self, tweet):
+        return tweet.replace("@", "")
 
-while True:
-    for tweet in bot.tag_search('sarcasm', 500):
-        t = bot._filter_harsh(tweet, 'sarcasm')
-        if t:
-            print(bot.clean_tweet(t['text']))
-    for tweet in bot.tag_search('sarcastic', 500):
-        t = bot._filter_harsh(tweet, 'sarcastic')
-        if t:
-            print(bot.clean_tweet(t['text']))
-    print(Tweet.select().count())
-    msg = Tweet.select().order_by(fn.Random()).limit(1)
-    for m in msg:
-        print(m.text)
-    suffix = random.choice([" ... Aces?",
-                            " ... Well, I guess.",
-                            " ... On Tuesdays?",
-                            " ... So serious.",
-                            " ... How do you really feel?",
-                            " ... By the heavens!",
-                            " ... Quick! To the batphone.",
-                            " ... Well, I'm not so sure."])
-    m = str(bot.clean_tweet(m.text) + suffix)
-    bot.tweet(m[:140])
-    time.sleep(60*10 + random.randint(1, 80))
+    def remove_link(self, tweet):
+        # TODO
+        pass
+
+
+if __name__ == '__main__':
+    
+    bot = Bot()
+
+    while True:
+        for tweet in bot.tag_search('sarcasm', 500):
+            t = bot._filter_harsh(tweet, 'sarcasm')
+            if t:
+                print(bot.clean_tweet(t['text']))
+        for tweet in bot.tag_search('sarcastic', 500):
+            t = bot._filter_harsh(tweet, 'sarcastic')
+            if t:
+                print(bot.clean_tweet(t['text']))
+        print(Tweet.select().count())
+        msg = Tweet.select().order_by(fn.Random()).limit(1)
+        for m in msg:
+            print(m.text)
+        suffix = random.choice([" ... Aces?",
+                                " ... Well, I guess.",
+                                " ... On Tuesdays?",
+                                " ... So serious.",
+                                " ... How do you really feel?",
+                                " ... By the heavens!",
+                                " ... Quick! To the batphone.",
+                                " ... Well, I'm not so sure."])
+        m = str(bot.clean_tweet(m.text) + suffix)
+        # bot.tweet(m[:140])
+        time.sleep(60*10 + random.randint(1, 80))

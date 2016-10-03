@@ -24,3 +24,4 @@ Is specifically for pulling out the # character, usernames, and urls.
 
 TODO.  Make each of those a separate cleaning function.
 TODO.  Remove RT.  Filter those tweets too?
+TODO.  Tests.
