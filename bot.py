@@ -75,11 +75,11 @@ class Bot:
 bot = Bot()
 
 while True:
-    for tweet in bot.tag_search('sarcasm', 50):
+    for tweet in bot.tag_search('sarcasm', 500):
         t = bot._filter_harsh(tweet, 'sarcasm')
         if t:
             print(bot.clean_tweet(t['text']))
-    for tweet in bot.tag_search('sarcastic', 50):
+    for tweet in bot.tag_search('sarcastic', 500):
         t = bot._filter_harsh(tweet, 'sarcastic')
         if t:
             print(bot.clean_tweet(t['text']))
@@ -96,5 +96,5 @@ while True:
                             " ... Quick! To the batphone.",
                             " ... Well, I'm not so sure."])
     m = str(bot.clean_tweet(m.text) + suffix)
-    bot.tweet(m)
+    bot.tweet(m[:140])
     time.sleep(60*10 + random.randint(1, 80))
