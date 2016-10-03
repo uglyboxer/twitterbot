@@ -75,11 +75,11 @@ class Bot:
 bot = Bot()
 
 while True:
-    for tweet in bot.tag_search('sarcasm', 100):
+    for tweet in bot.tag_search('sarcasm', 50):
         t = bot._filter_harsh(tweet, 'sarcasm')
         if t:
             print(bot.clean_tweet(t['text']))
-    for tweet in bot.tag_search('sarcastic', 100):
+    for tweet in bot.tag_search('sarcastic', 50):
         t = bot._filter_harsh(tweet, 'sarcastic')
         if t:
             print(bot.clean_tweet(t['text']))
