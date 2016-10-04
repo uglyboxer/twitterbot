@@ -1,6 +1,7 @@
 import time
 import random
 import sys
+import json
 
 import peewee as pw
 import tweepy
@@ -113,7 +114,7 @@ if __name__ == '__main__':
                 tweet_dict = bot._filter_harsh(tweet, ht)
                 if tweet_dict:
                     last_tweets += [tweet_dict]
-            print(last_tweets)
+            print(json.dumps(last_tweets, indent=2))
             time.sleep(max(random.gauss(delay, delay_std), min_delay))
 
         num_after = bot.count()
