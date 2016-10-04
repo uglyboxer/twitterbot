@@ -104,7 +104,7 @@ if __name__ == '__main__':
     min_delay = 0.5
     delay = 60 * 15 if delay is None else delay
     num_tweets = num_tweets or 100
-    delay_std = delay * 0.15
+    delay_std = delay * 0.20
 
     while True:
         num_before = bot.count()
