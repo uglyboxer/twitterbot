@@ -100,6 +100,7 @@ if __name__ == '__main__':
     hashtags = hashtags if len(hashtags) else ['sarcasm', 'sarcastic']
 
     bot = Bot()
+    min_delay = 0.5
     delay = 60 * 15 if delay is None else delay
     num_tweets = num_tweets or 100
     delay_std = delay * 0.15
@@ -113,7 +114,7 @@ if __name__ == '__main__':
                 if tweet_dict:
                     last_tweets += [tweet_dict]
             print(last_tweets)
-            time.sleep(random.gauss(delay, delay_std))
+            time.sleep(max(random.gauss(delay, delay_std), min_delay))
 
         num_after = bot.count()
         print("Retrieved {} tweets with the hash tags {} for a total of {}".format(
