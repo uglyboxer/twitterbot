@@ -47,7 +47,7 @@ class Bot:
             tag_list = []
             for word in reversed(tweet_list):
                 if word[0] == "#":
-                    tag_list.append(word[1:])
+                    tag_list.append(word[1:].lower())
                 else:
                     break
             if tag not in tag_list:
