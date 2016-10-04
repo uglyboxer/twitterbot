@@ -16,13 +16,18 @@ class Bot:
         self.api.update_status(message)
         return True
 
-    def tag_search(self, string, quantity=1):
+    def tag_search(self, string, pages=1, since_id=1):
+        tweets = []
         search_tag = '#{}'.format(string)
-        tweet_list = self.api.search(q=search_tag, 
-                                     count=quantity,
-                                     lang='en')
-        tweets = [x.text for x in tweet_list]
-        return tweets
+        # tweet_list = self.api.search(q=search_tag, 
+        #                              count=quantity,
+        #                              lang='en')
+        tweet_list = tweepy.Cursor(self.api.search, q=search_tag, lang='en', rpp=100, since_id=since_id).pages(pages)
+        for page in tweet_list:
+            tweets += [x.text for x in page]
+            since_id = page[-1].id
+        print('Tweets found: {}'.format(len(tweets)))
+        return (tweets, since_id)
 
     def _filter_harsh(self, tweet, tag):
         """
@@ -86,12 +91,23 @@ if __name__ == '__main__':
     
     bot = Bot()
 
+    # tweet_list = tweepy.Cursor(bot.api.search, q="#sarcasm").pages(2)
+    # for i, tweets in enumerate(tweet_list):
+    #     print('------------------ {}'.format(i))
+    #     for t in tweets:
+    #         print(t.text)
+
+    since_id = 1
+    since_id_2 = 1
     while True:
-        for tweet in bot.tag_search('sarcasm', 500):
+        tweets, since_id = bot.tag_search('sarcasm', 8, since_id=since_id)
+        for tweet in tweets:
             t = bot._filter_harsh(tweet, 'sarcasm')
             if t:
                 print(bot.clean_tweet(t['text']))
-        for tweet in bot.tag_search('sarcastic', 500):
+
+        tweets, since_id_2 = bot.tag_search('sarcastic', 7, since_id=since_id_2)
+        for tweet in tweets:
             t = bot._filter_harsh(tweet, 'sarcastic')
             if t:
                 print(bot.clean_tweet(t['text']))
@@ -109,4 +125,4 @@ if __name__ == '__main__':
                                 " ... Well, I'm not so sure."])
         m = str(bot.clean_tweet(m.text) + suffix)
         # bot.tweet(m[:140])
-        time.sleep(60*10 + random.randint(1, 80))
+        time.sleep(60*15 + random.randint(1, 80))
