@@ -1,15 +1,19 @@
-from secrets import *
-from model import Tweet
+from secrets import CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
+
+import time
+import random
 
 from peewee import fn
+import tweepy
 
-import tweepy, time, random
+from model import Tweet
+
 
 class Bot:
 
     def __init__(self):
         self.auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-        self.auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
+        self.auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
         self.api = tweepy.API(self.auth)
 
     def tweet(self, message):
@@ -18,7 +22,7 @@ class Bot:
 
     def tag_search(self, string, quantity=1):
         search_tag = '#{}'.format(string)
-        tweet_list = self.api.search(q=search_tag, 
+        tweet_list = self.api.search(q=search_tag,
                                      count=quantity,
                                      lang='en')
         tweets = [x.text for x in tweet_list]
@@ -29,13 +33,13 @@ class Bot:
         @brief     This will pull off hash tags just at the end of
                    tweet.  If your tag is not in the ending list
                    the tweet will not be returned
-                   Tweets with links are ignored, in case the tag 
+                   Tweets with links are ignored, in case the tag
                    refers to the link and not the text
-        
+
         @param      self   The object
         @param      tweet  The tweet
         @param      tag    The tag
-        
+
         @return     the tweet, minus ending tags and the list of tags
                     or False
         """
@@ -60,7 +64,6 @@ class Bot:
 
         return {'text': tweet, 'tags': tag_list}
 
-
     def clean_tweet(self, tweet):
         """ Strip # character and @usernames out of tweet """
         filter_list = []
@@ -83,7 +86,7 @@ class Bot:
 
 
 if __name__ == '__main__':
-    
+
     bot = Bot()
 
     while True:
@@ -109,4 +112,4 @@ if __name__ == '__main__':
                                 " ... Well, I'm not so sure."])
         m = str(bot.clean_tweet(m.text) + suffix)
         # bot.tweet(m[:140])
-        time.sleep(60*10 + random.randint(1, 80))
+        time.sleep(60 * 10 + random.randint(1, 80))
