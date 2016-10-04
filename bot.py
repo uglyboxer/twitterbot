@@ -1,5 +1,5 @@
 import time
-# import random
+import random
 import sys
 
 import peewee as pw
@@ -85,27 +85,37 @@ class Bot:
 
 
 if __name__ == '__main__':
+    args = sys.argv
+    num_tweets, delay = None, None
+    hashtags = []
+    for arg in args[1:]:
+        try:
+            num_tweets = int(arg) if not num_tweets else int('unintable')
+        except ValueError:
+            try:
+                delay = float(arg) if delay is None else float('unfloatable')
+            except ValueError:
+                hashtags += [arg.lstrip('#')]
 
-    hashtags = [ht.lstrip('#') for ht in sys.argv[1:]] if len(sys.argv) > 1 else ['sarcasm', 'sarcastic']
+    hashtags = hashtags if len(hashtags) else ['sarcasm', 'sarcastic']
 
     bot = Bot()
-    delay = 1  # 60 * 15 + random.randint(1, 240)
-    num_requests = 1
+    delay = 60 * 15 if delay is None else delay
+    num_tweets = num_tweets or 100
+    delay_std = delay * 0.15
 
-    for i in range(num_requests):
+    while True:
         num_before = bot.count()
         for ht in hashtags:
-            for tweet in bot.tag_search(ht, 100):
+            last_tweets = []
+            for tweet in bot.tag_search(ht, num_tweets):
                 tweet_dict = bot._filter_harsh(tweet, ht)
+                if tweet_dict:
+                    last_tweets += [tweet_dict]
+            print(last_tweets)
+            time.sleep(random.gauss(delay, delay_std))
+
         num_after = bot.count()
-        # if t:
-        #     print(bot.clean_tweet(t['text']))
-        #     break
-        # for tweet in bot.tag_search('sarcastic', 500):
-        #     t = bot._filter_harsh(tweet, 'sarcastic')
-        #     if t:
-        #         print(bot.clean_tweet(t['text']))
         print("Retrieved {} tweets with the hash tags {} for a total of {}".format(
             num_after - num_before, hashtags, num_after))
         # bot.tweet(m[:140])
-        time.sleep(delay)
