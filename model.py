@@ -1,18 +1,14 @@
-from peewee import *
-# from playhouse.fields import ManyToManyField
+import peewee as pw
 
 
-db = SqliteDatabase('tweets.db')
+db = pw.SqliteDatabase('tweets.db')
 
 
-class Tweet(Model):
+class BaseModel(pw.Model):
+    class Meta:
+        database = db
 
-    text = CharField(unique=True)
-    
 
-# class Tag(Model):
-
-#     tag = CharField()
-#     tweet = ManyToManyField(Tweet, related_name='tags')
-
-# db.create_tables([Tweet])
+class Tweet(BaseModel):
+    text = pw.CharField()
+    tags = pw.CharField()

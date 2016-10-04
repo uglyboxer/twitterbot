@@ -1,12 +1,12 @@
-from secrets import CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
-
 import time
-import random
+# import random
+import sys
 
-from peewee import fn
+import peewee as pw
 import tweepy
 
-from model import Tweet
+from secrets import CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET
+import model
 
 
 class Bot:
@@ -15,10 +15,19 @@ class Bot:
         self.auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
         self.auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
         self.api = tweepy.API(self.auth)
+        try:
+            print('There are {} tweets in the database.'.format(model.Tweet.select().count()))
+        except pw.OperationalError:
+            model.db.create_tables([model.Tweet])
+            print('There are {} tweets in the newly created Tweet table.'.format(model.Tweet.select().count()))
 
     def tweet(self, message):
         self.api.update_status(message)
         return True
+
+    def count(self, tags=None):
+        tags = ' '.join(tags) if isinstance(tags, (list, tuple)) else tags
+        return model.Tweet.select().count() if tags is None else model.db.filter(tags=' '.join(sorted(tags.split())))
 
     def tag_search(self, string, quantity=1):
         search_tag = '#{}'.format(string)
@@ -59,8 +68,8 @@ class Bot:
         length = len(tweet_list) - len(tag_list)
         tagless_list = tweet_list[:length]
 
-        tweet = " ".join(tagless_list).replace("#", "")
-        Tweet.create_or_get(text=tweet)
+        tweet = " ".join(tagless_list)  # .replace("#", "")
+        model.Tweet.create_or_get(text=tweet, tags=' '.join(sorted(tag_list)))
 
         return {'text': tweet, 'tags': tag_list}
 
@@ -74,42 +83,29 @@ class Bot:
                 filter_list.append(word)
         return " ".join(filter_list)
 
-    def remove_hash_symbol(self, tweet):
-        return tweet.replace("#", "")
-
-    def remove_at_symbol(self, tweet):
-        return tweet.replace("@", "")
-
-    def remove_link(self, tweet):
-        # TODO
-        pass
-
 
 if __name__ == '__main__':
 
-    bot = Bot()
+    hashtags = [ht.lstrip('#') for ht in sys.argv[1:]] if len(sys.argv) > 1 else ['sarcasm', 'sarcastic']
 
-    while True:
-        for tweet in bot.tag_search('sarcasm', 500):
-            t = bot._filter_harsh(tweet, 'sarcasm')
-            if t:
-                print(bot.clean_tweet(t['text']))
-        for tweet in bot.tag_search('sarcastic', 500):
-            t = bot._filter_harsh(tweet, 'sarcastic')
-            if t:
-                print(bot.clean_tweet(t['text']))
-        print(Tweet.select().count())
-        msg = Tweet.select().order_by(fn.Random()).limit(1)
-        for m in msg:
-            print(m.text)
-        suffix = random.choice([" ... Aces?",
-                                " ... Well, I guess.",
-                                " ... On Tuesdays?",
-                                " ... So serious.",
-                                " ... How do you really feel?",
-                                " ... By the heavens!",
-                                " ... Quick! To the batphone.",
-                                " ... Well, I'm not so sure."])
-        m = str(bot.clean_tweet(m.text) + suffix)
+    bot = Bot()
+    delay = 1  # 60 * 15 + random.randint(1, 240)
+    num_requests = 1
+
+    for i in range(num_requests):
+        num_before = bot.count()
+        for ht in hashtags:
+            for tweet in bot.tag_search(ht, 100):
+                tweet_dict = bot._filter_harsh(tweet, ht)
+        num_after = bot.count()
+        # if t:
+        #     print(bot.clean_tweet(t['text']))
+        #     break
+        # for tweet in bot.tag_search('sarcastic', 500):
+        #     t = bot._filter_harsh(tweet, 'sarcastic')
+        #     if t:
+        #         print(bot.clean_tweet(t['text']))
+        print("Retrieved {} tweets with the hash tags {} for a total of {}".format(
+            num_after - num_before, hashtags, num_after))
         # bot.tweet(m[:140])
-        time.sleep(60 * 10 + random.randint(1, 80))
+        time.sleep(delay)
