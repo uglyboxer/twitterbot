@@ -19,13 +19,19 @@ class Bot:
     def tag_search(self, string, pages=1, since_id=1):
         tweets = []
         search_tag = '#{}'.format(string)
-        # tweet_list = self.api.search(q=search_tag, 
-        #                              count=quantity,
-        #                              lang='en')
-        tweet_list = tweepy.Cursor(self.api.search, q=search_tag, wait_on_rate_limit=True, wait_on_rate_limit_notify=True, lang='en', rpp=100, since_id=since_id).pages(pages)
+
+        tweet_list = tweepy.Cursor(self.api.search,
+                                   q=search_tag,
+                                   wait_on_rate_limit=True,
+                                   wait_on_rate_limit_notify=True,
+                                   lang='en',
+                                   rpp=100,
+                                   since_id=since_id).pages(pages)
+
         for page in tweet_list:
             tweets += [x.text for x in page]
             since_id = page[-1].id
+
         print('Tweets found: {}'.format(len(tweets)))
         return (tweets, since_id)
 
