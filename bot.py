@@ -47,7 +47,6 @@ class Bot:
         last.last_id = since_id
         last.save()
         
-        print("last id: {}".format(since_id))
         print('Tweets found: {}'.format(len(tweets)))
         return (tweets, since_id)
 
