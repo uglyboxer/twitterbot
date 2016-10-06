@@ -22,7 +22,16 @@ Bot.clean_tweet(tweet, tag)
 ```
 Is specifically for pulling out the # character, usernames, and urls.
 
+
+Calling the function stream will steam realtime tweets filtered on the elements
+of the arg list.  Output is to the stdout but can be modifiied in class MyStreamListener
+
+```python
+bot = Bot()
+stream(bot, ['sarcasm'])
+```
+
 TODO.  Make each of those a separate cleaning function.
 TODO.  Remove RT.  Filter those tweets too?
 TODO.  Tests.
-TODO.  Use Tweepy helpers to wait for rate limits
+TODO.  Make table for search tags with a Many to Many relation to the Tweets table for storing more searches.
