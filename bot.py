@@ -1,9 +1,17 @@
 from secrets import *
-from model import Tweet
+from model import Tweet, LastId
 
 from peewee import fn
 
 import tweepy, time, random
+
+
+
+class MyStreamListener(tweepy.StreamListener):
+
+    def on_status(self, status):
+        print(status.text)
+
 
 class Bot:
 
@@ -18,6 +26,7 @@ class Bot:
 
     def tag_search(self, string, pages=1, since_id=1):
         tweets = []
+        print("first id: {}".format(since_id))
         search_tag = '#{}'.format(string)
 
         tweet_list = tweepy.Cursor(self.api.search,
@@ -27,11 +36,18 @@ class Bot:
                                    lang='en',
                                    rpp=100,
                                    since_id=since_id).pages(pages)
-
+        i = 1
         for page in tweet_list:
+            print("page {}".format(i))
             tweets += [x.text for x in page]
             since_id = page[-1].id
+            i+=1
 
+        last = LastId.get(id=1)
+        last.last_id = since_id
+        last.save()
+        
+        print("last id: {}".format(since_id))
         print('Tweets found: {}'.format(len(tweets)))
         return (tweets, since_id)
 
@@ -94,26 +110,38 @@ class Bot:
         pass
 
 
+def stream(bot, filter_list):
+    """
+    @brief      Create focused stream from the Twitter firehose
+    
+    @param      bot          Instance of Bot class
+    @param      filter_list  list of search terms
+    """
+    myStreamListener = MyStreamListener()
+    myStream = tweepy.Stream(auth = bot.api.auth, listener=myStreamListener)
+    myStream.filter(track=filter_list)
+
+
 if __name__ == '__main__':
     
     bot = Bot()
 
-    # tweet_list = tweepy.Cursor(bot.api.search, q="#sarcasm").pages(2)
-    # for i, tweets in enumerate(tweet_list):
-    #     print('------------------ {}'.format(i))
-    #     for t in tweets:
-    #         print(t.text)
+    # stream(bot, ['sarcasm'])
 
-    since_id = 1
-    since_id_2 = 1
+    # since_id = 780953436837646336
+    # since_id_2 = 780953436837646336
+    # LastId.create(last_id=since_id)
+    
+    since_id = since_id_2 = LastId.get(id=1).last_id
+
     while True:
-        tweets, since_id = bot.tag_search('sarcasm', 8, since_id=since_id)
+        tweets, since_id = bot.tag_search('sarcasm', 10, since_id=since_id)
         for tweet in tweets:
             t = bot._filter_harsh(tweet, 'sarcasm')
             if t:
                 print(bot.clean_tweet(t['text']))
 
-        tweets, since_id_2 = bot.tag_search('sarcastic', 7, since_id=since_id_2)
+        tweets, since_id_2 = bot.tag_search('sarcastic', 10, since_id=since_id_2)
         for tweet in tweets:
             t = bot._filter_harsh(tweet, 'sarcastic')
             if t:
