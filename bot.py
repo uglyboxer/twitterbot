@@ -35,8 +35,11 @@ class Bot:
         tweet_list = self.api.search(q=search_tag,
                                      count=quantity,
                                      lang='en')
-        tweets = [x.text for x in tweet_list]
-        return tweets
+        print("Retrieved {} tweets starting with:".format(len(tweet_list)))
+        if tweet_list:
+            print(tweet_list[0])
+
+        return tweet_list
 
     def _filter_harsh(self, tweet, tag):
         """
@@ -53,11 +56,11 @@ class Bot:
         @return     the tweet, minus ending tags and the list of tags
                     or False
         """
-
-        if 'http' in tweet:
+        if 'http' in tweet.text:
             return False
         else:
-            tweet_list = tweet.split()
+            # tag_list = [d['text'] for d in tweet.hashtags]
+            tweet_list = tweet.text.split()
             tag_list = []
             for word in reversed(tweet_list):
                 if word[0] == "#":
@@ -66,13 +69,22 @@ class Bot:
                     break
             if tag not in tag_list:
                 return False
-        length = len(tweet_list) - len(tag_list)
-        tagless_list = tweet_list[:length]
-
-        tweet = " ".join(tagless_list)  # .replace("#", "")
-        model.Tweet.create_or_get(text=tweet, tags=' '.join(sorted(tag_list)))
-
-        return {'text': tweet, 'tags': tag_list}
+        # length = len(tweet_list) - len(tag_list)
+        # tagless_list = tweet_list[:length]
+        # tweet.tag_list = tag_list
+        # tweet.filtered_text = " ".join(tagless_list)  # .replace("#", "")
+        user = model.User.create_or_get(screen_name=tweet.user.screen_name,
+                                        followers_count=tweet.user.followers_count,
+                                        statuses_count=tweet.user.statuses_count,
+                                        friends_count=tweet.user.friends_count,
+                                        )
+        tweet = model.Tweet.create_or_get(  # id=tweet.id,
+                                          id_str=tweet.id_str,
+                                          user=user,
+                                          # favourites_count=tweet.favourites_count,
+                                          text=tweet.text,
+                                          tags=' '.join(sorted(tag_list)))
+        return tweet
 
     def clean_tweet(self, tweet):
         """ Strip # character and @usernames out of tweet """
@@ -111,9 +123,9 @@ if __name__ == '__main__':
         for ht in hashtags:
             last_tweets = []
             for tweet in bot.tag_search(ht, num_tweets):
-                tweet_dict = bot._filter_harsh(tweet, ht)
-                if tweet_dict:
-                    last_tweets += [tweet_dict]
+                acceptable_tweet = bot._filter_harsh(tweet, ht)
+                if acceptable_tweet:
+                    last_tweets += [acceptable_tweet]
             print(json.dumps(last_tweets, indent=2))
             time.sleep(max(random.gauss(delay, delay_std), min_delay))
 
