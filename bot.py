@@ -2,6 +2,7 @@ import time
 import random
 import sys
 import json
+from traceback import format_exc
 
 import peewee as pw
 import tweepy
@@ -19,7 +20,7 @@ class Bot:
         try:
             print('There are {} tweets in the database.'.format(model.Tweet.select().count()))
         except pw.OperationalError:
-            model.db.create_tables([model.Tweet])
+            model.create_tables()
             print('There are {} tweets in the newly created Tweet table.'.format(model.Tweet.select().count()))
 
     def tweet(self, message):
@@ -73,7 +74,7 @@ class Bot:
                 return False
         return tweet
 
-    def save_tweet(tweet):
+    def save_tweet(self, tweet):
         tag_list = [d['text'] for d in tweet.entities.get('hashtags', [])]
         user_record, created = model.User.create_or_get(
             screen_name=tweet.user.screen_name,
@@ -127,14 +128,17 @@ def parse_args(args):
                 delay = float(arg) if delay is None else float('unfloatable')
             except ValueError:
                 hashtags += [arg.lstrip('#')]
-    delay = 60 * 15 if args['delay'] is None else args['delay']
-    num_tweets = args['num_tweets'] or 100
-    return {
+    delay = 60 * 15 if delay is None else delay
+    num_tweets = num_tweets or 100
+    arg_dict = {
         'num_tweets': num_tweets,
         'delay': delay,
         'picky': picky,
         'hashtags': hashtags,
         }
+    print('Parsed args into:')
+    print(json.dumps(arg_dict, indent=4))
+    return arg_dict
 
 
 if __name__ == '__main__':
@@ -156,9 +160,18 @@ if __name__ == '__main__':
                         last_tweets += [bot.save_tweet(acceptable_tweet)]
                 print(json.dumps(last_tweets, default=model.Serializer(), indent=2))
             except:
-                print("Unable to retrieve any tweets. Will try again later.")
+                print('!' * 80)
+                print(format_exc())
+                bot.rate_limit_status = bot.api.rate_limit_status()
+                print('Search Rate Limit Status')
+                print(json.dumps(bot.rate_limit_status['resources']['search'], default=model.Serializer(), indent=2))
+                print('Application Rate Limit Status')
+                print(json.dumps(bot.rate_limit_status['resources']['application'], default=model.Serializer(), indent=2))
+                print("Unable to retrieve any tweets! Will try again later.")
             print('--' * 80)
-            time.sleep(max(random.gauss(args['delay'], delay_std), min_delay))
+            sleep_seconds = max(random.gauss(args['delay'], delay_std), min_delay)
+            print('sleeping for {} s ...'.format(round(sleep_seconds, 2)))
+            time.sleep(sleep_seconds)
 
         num_after = bot.count()
         print("Retrieved {} tweets with the hash tags {} for a total of {}".format(
