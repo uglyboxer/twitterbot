@@ -76,6 +76,8 @@ class Bot:
 
     def save_tweet(self, tweet):
         tag_list = [d['text'] for d in tweet.entities.get('hashtags', [])]
+        # FIXME probably maintain unique User list based on id_str alone
+        #       keep track of dynamic attributes over time as dated lists (jsonfields or related tables)
         user_record, created = model.User.create_or_get(
             screen_name=tweet.user.screen_name,
             followers_count=tweet.user.followers_count,
@@ -83,6 +85,8 @@ class Bot:
             friends_count=tweet.user.friends_count,
             favourites_count=tweet.user.favourites_count,
             )
+        # FIXME: tweet text should be unique
+        #        dynamic attributes should be a dated list (jsonfield)
         tweet_record, created = model.Tweet.create_or_get(  # id=tweet.id,
             id=tweet.id,
             id_str=tweet.id_str,
@@ -150,6 +154,8 @@ if __name__ == '__main__':
     while True:
         num_before = bot.count()
         print('=' * 80)
+        # TODO: hashtags attribute of Bot
+        #       if more than 15 hashtags just search for them in pairs, tripplets, etc
         for ht in args['hashtags']:
             print('Looking for #{}'.format(ht))
             last_tweets = []
