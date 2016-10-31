@@ -68,25 +68,24 @@ class Bot:
                     else:
                         break
             else:
-                tag_list = [d['text'] for d in tweet.entities.get('hashtags', [])]
+                tag_list = [d['text'].lower() for d in tweet.entities.get('hashtags', [])]
             if tag not in tag_list:
                 return False
+        return tweet
 
-        # length = len(tweet_list) - len(tag_list)
-        # tagless_list = tweet_list[:length]
-        # tweet.tag_list = tag_list
-        # tweet.filtered_text = " ".join(tagless_list)  # .replace("#", "")
-        user, created = model.User.create_or_get(
+    def save_tweet(tweet):
+        tag_list = [d['text'] for d in tweet.entities.get('hashtags', [])]
+        user_record, created = model.User.create_or_get(
             screen_name=tweet.user.screen_name,
             followers_count=tweet.user.followers_count,
             statuses_count=tweet.user.statuses_count,
             friends_count=tweet.user.friends_count,
             favourites_count=tweet.user.favourites_count,
             )
-        tweet_obj, created = model.Tweet.create_or_get(  # id=tweet.id,
+        tweet_record, created = model.Tweet.create_or_get(  # id=tweet.id,
             id=tweet.id,
             id_str=tweet.id_str,
-            user=user,
+            user=user_record,
             favorite_count=tweet.favorite_count,
             text=tweet.text,
             tags=' '.join(sorted(tag_list)))
@@ -96,8 +95,8 @@ class Bot:
             if created:
                 print("We don't have the tweet ({}) that this ({}) was a reply to , but we could GET it ;)".format(
                     id_str, tweet.id_str))
-            model.Reply.create_or_get(tweet=tweet_obj, tweet_replied_to=tweet_replied_to)
-        return tweet_obj
+            model.Reply.create_or_get(tweet=tweet_record, tweet_replied_to=tweet_replied_to)
+        return tweet_record
 
     def clean_tweet(self, tweet):
         """ Strip # character and @usernames out of tweet """
@@ -110,8 +109,8 @@ class Bot:
         return " ".join(filter_list)
 
 
-if __name__ == '__main__':
-    args = sys.argv
+# FIXME: use builtin argparse module instead
+def parse_args(args):
     num_tweets, delay, picky = None, None, None
     # --picky flag means to ignore any tweets that contain "http" and does not end with one of the desired hashtags
     if '--picky' in args:
@@ -128,29 +127,40 @@ if __name__ == '__main__':
                 delay = float(arg) if delay is None else float('unfloatable')
             except ValueError:
                 hashtags += [arg.lstrip('#')]
+    delay = 60 * 15 if args['delay'] is None else args['delay']
+    num_tweets = args['num_tweets'] or 100
+    return {
+        'num_tweets': num_tweets,
+        'delay': delay,
+        'picky': picky,
+        'hashtags': hashtags,
+        }
 
-    hashtags = hashtags if len(hashtags) else ['sarcasm', 'sarcastic']
 
+if __name__ == '__main__':
+    args = parse_args(sys.argv)
     bot = Bot()
     min_delay = 0.5
-    delay = 60 * 15 if delay is None else delay
-    num_tweets = num_tweets or 100
-    delay_std = delay * 0.20
+    delay_std = args['delay'] * 0.10
 
     while True:
         num_before = bot.count()
-        for ht in hashtags:
-            print('=' * 80)
+        print('=' * 80)
+        for ht in args['hashtags']:
             print('Looking for #{}'.format(ht))
             last_tweets = []
-            for tweet in bot.tag_search(ht, num_tweets):
-                acceptable_tweet = bot._is_acceptable(tweet, ht, picky=picky)
-                if acceptable_tweet:
-                    last_tweets += [acceptable_tweet]
-            print(json.dumps(last_tweets, default=model.Serializer(), indent=2))
-            time.sleep(max(random.gauss(delay, delay_std), min_delay))
+            try:
+                for tweet in bot.tag_search(ht, args['num_tweets']):
+                    acceptable_tweet = bot._is_acceptable(tweet, ht, picky=args['picky'])
+                    if acceptable_tweet:
+                        last_tweets += [bot.save_tweet(acceptable_tweet)]
+                print(json.dumps(last_tweets, default=model.Serializer(), indent=2))
+            except:
+                print("Unable to retrieve any tweets. Will try again later.")
+            print('--' * 80)
+            time.sleep(max(random.gauss(args['delay'], delay_std), min_delay))
 
         num_after = bot.count()
         print("Retrieved {} tweets with the hash tags {} for a total of {}".format(
-            num_after - num_before, hashtags, num_after))
+            num_after - num_before, args['hashtags'], num_after))
         # bot.tweet(m[:140])
