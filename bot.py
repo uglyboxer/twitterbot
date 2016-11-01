@@ -178,7 +178,7 @@ if __name__ == '__main__':
     # since_id_2 = 780953436837646336
     # LastId.create(last_id=since_id)
     
-    since_id = since_id_2 = LastId.get(id=1).last_id
+    # since_id = since_id_2 = LastId.get(id=1).last_id
 
     while True:
         num_before = bot.count()
