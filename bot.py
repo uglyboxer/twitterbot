@@ -12,11 +12,18 @@ import model
 
 
 
-
 class MyStreamListener(tweepy.StreamListener):
 
     def on_status(self, status):
-        print(status.text)
+        try:
+            status = status.retweeted_status
+        except AttributeError:
+            pass
+        img_url = get_image(status)
+        if img_url:
+            print(img_url)
+            print(status.text)
+            save_tweet(status, img_url)
 
 
 class Bot:
@@ -42,6 +49,7 @@ class Bot:
     def tag_search(self, string, quantity=1):
         search_tag = '#{}'.format(string)
         tweet_list = self.api.search(q=search_tag,
+                                     tweet_mode='extended',
                                      count=quantity,
                                      lang='en')
         print("Retrieved {} tweets starting with:".format(len(tweet_list)))
@@ -49,68 +57,6 @@ class Bot:
             print(tweet_list[0])
 
         return tweet_list
-
-    def _is_acceptable(self, tweet, tag, picky=False):
-        """
-        @brief     This will pull off hash tags just at the end of
-                   tweet.  If your tag is not in the ending list
-                   the tweet will not be returned
-                   Tweets with links are ignored, in case the tag
-                   refers to the link and not the text
-
-        @param      self   The object
-        @param      tweet  The tweet
-        @param      tag    The tag
-
-        @return     the tweet, minus ending tags and the list of tags
-                    or False
-        """
-        if picky and 'http' in tweet.text:
-            return False
-        else:
-            if picky:
-                tweet_list = tweet.text.split()
-                tag_list = []
-                for word in reversed(tweet_list):
-                    if word[0] == "#":
-                        tag_list.append(word[1:].lower())
-                    else:
-                        break
-            else:
-                tag_list = [d['text'].lower() for d in tweet.entities.get('hashtags', [])]
-            if tag not in tag_list:
-                return False
-
-        return tweet
-
-    def save_tweet(self, tweet):
-        tag_list = [d['text'] for d in tweet.entities.get('hashtags', [])]
-        # FIXME probably maintain unique User list based on id_str alone
-        #       keep track of dynamic attributes over time as dated lists (jsonfields or related tables)
-        user_record, created = model.User.create_or_get(
-            screen_name=tweet.user.screen_name,
-            followers_count=tweet.user.followers_count,
-            statuses_count=tweet.user.statuses_count,
-            friends_count=tweet.user.friends_count,
-            favourites_count=tweet.user.favourites_count,
-            )
-        # FIXME: tweet text should be unique
-        #        dynamic attributes should be a dated list (jsonfield)
-        tweet_record, created = model.Tweet.create_or_get(  # id=tweet.id,
-            id=tweet.id,
-            id_str=tweet.id_str,
-            user=user_record,
-            favorite_count=tweet.favorite_count,
-            text=tweet.text,
-            tags=' '.join(sorted(tag_list)))
-        id_str = tweet.in_reply_to_status_id_str
-        if id_str:
-            tweet_replied_to, created = model.Tweet.create_or_get(id_str=id_str)
-            if created:
-                print("We don't have the tweet ({}) that this ({}) was a reply to , but we could GET it ;)".format(
-                    id_str, tweet.id_str))
-            model.Reply.create_or_get(tweet=tweet_record, tweet_replied_to=tweet_replied_to)
-        return tweet_record
 
     def clean_tweet(self, tweet):
         """ Strip # character and @usernames out of tweet """
@@ -123,35 +69,49 @@ class Bot:
         return " ".join(filter_list)
 
 
-# FIXME: use builtin argparse module instead
-def parse_args(args):
-    num_tweets, delay, picky = None, None, None
-    # --picky flag means to ignore any tweets that contain "http" and does not end with one of the desired hashtags
-    if '--picky' in args:
-        del args[args.index('--picky')]
-        picky = True
-    hashtags = []
-    # the first float found on the command line is the delay in seconds between twitter search queries
-    # the first int after the first float is the number of tweets to retrieve with each twitter search query
-    for arg in args[1:]:
-        try:
-            num_tweets = int(arg) if not num_tweets else int('unintable')
-        except ValueError:
-            try:
-                delay = float(arg) if delay is None else float('unfloatable')
-            except ValueError:
-                hashtags += [arg.lstrip('#')]
-    delay = 60 * 15 if delay is None else delay
-    num_tweets = num_tweets or 100
-    arg_dict = {
-        'num_tweets': num_tweets,
-        'delay': delay,
-        'picky': picky,
-        'hashtags': hashtags,
-        }
-    print('Parsed args into:')
-    print(json.dumps(arg_dict, indent=4))
-    return arg_dict
+def save_tweet(tweet, img_url=None):
+    tag_list = [d['text'] for d in tweet.entities.get('hashtags', [])]
+    # FIXME probably maintain unique User list based on id_str alone
+    #       keep track of dynamic attributes over time as dated lists (jsonfields or related tables)
+    user_record, created = model.User.create_or_get(
+        screen_name=tweet.user.screen_name,
+        followers_count=tweet.user.followers_count,
+        statuses_count=tweet.user.statuses_count,
+        friends_count=tweet.user.friends_count,
+        favourites_count=tweet.user.favourites_count,
+        )
+    # FIXME: tweet text should be unique
+    #        dynamic attributes should be a dated list (jsonfield)
+    tweet_record, created = model.Tweet.create_or_get(  # id=tweet.id,
+        tweet_id=tweet.id,
+        id_str=tweet.id_str,
+        user=user_record,
+        favorite_count=tweet.favorite_count,
+        text=tweet.text,
+        tags=' '.join(sorted(tag_list)),
+        img_url=img_url)
+    if not created:
+        print('Already had it.')
+    id_str = tweet.in_reply_to_status_id_str
+    if id_str:
+        tweet_replied_to, created = model.Tweet.create_or_get(id_str=id_str)
+        if created:
+            print("We don't have the tweet ({}) that this ({}) was a reply to , but we could GET it ;)".format(
+                id_str, tweet.id_str))
+        model.Reply.create_or_get(tweet=tweet_record, tweet_replied_to=tweet_replied_to)
+    return tweet_record
+
+
+def get_image(tweet):
+
+    img_urls = []
+    if hasattr(tweet, 'extended_entities') and tweet.extended_entities['media']:
+        for img in tweet.extended_entities['media']:
+            if img['type'] == 'photo':
+                img_urls.append(img['media_url_https'])
+    if img_urls:
+        return img_urls[0]
+    return None
 
 
 def stream(bot, filter_list):
@@ -162,38 +122,32 @@ def stream(bot, filter_list):
     @param      filter_list  list of search terms
     """
     myStreamListener = MyStreamListener()
-    myStream = tweepy.Stream(auth = bot.api.auth, listener=myStreamListener)
+    myStream = tweepy.Stream(auth = bot.api.auth, listener=myStreamListener, tweet_mode='extended')
     myStream.filter(track=filter_list)
 
 
-if __name__ == '__main__':
-    args = parse_args(sys.argv)
+def get_tweets(hashtags):
     bot = Bot()
     min_delay = 0.5
-    delay_std = args['delay'] * 0.10
+    delay_std = 15 * 0.10
+    max_tweets = 3200
 
     # stream(bot, ['sarcasm'])
-
-    # since_id = 780953436837646336
-    # since_id_2 = 780953436837646336
-    # LastId.create(last_id=since_id)
-    
-    # since_id = since_id_2 = LastId.get(id=1).last_id
 
     while True:
         num_before = bot.count()
         print('=' * 80)
-        # TODO: hashtags attribute of Bot
-        #       if more than 15 hashtags just search for them in pairs, tripplets, etc
-        for ht in args['hashtags']:
+        for ht in hashtags:
             print('Looking for #{}'.format(ht))
             last_tweets = []
             try:
-                for tweet in bot.tag_search(ht, args['num_tweets']):
-                    acceptable_tweet = bot._is_acceptable(tweet, ht, picky=args['picky'])
-                    if acceptable_tweet:
-                        last_tweets += [bot.save_tweet(acceptable_tweet)]
-                print(json.dumps(last_tweets, default=model.Serializer(), indent=2))
+                for tweet in bot.tag_search(ht, quantity=max_tweets):
+                    img_url = get_image(tweet)
+                    if img_url:
+                        print(img_url)
+                        bot.save_tweet(tweet, img_url)
+                # print(json.dumps(last_tweets, defauolt=model.Serializer(), indent=2))
+
             except:
                 print('!' * 80)
                 print(format_exc())
@@ -204,11 +158,18 @@ if __name__ == '__main__':
                 print(json.dumps(bot.rate_limit_status['resources']['application'], default=model.Serializer(), indent=2))
                 print("Unable to retrieve any tweets! Will try again later.")
             print('--' * 80)
-            sleep_seconds = max(random.gauss(args['delay'], delay_std), min_delay)
+            sleep_seconds = max(random.gauss(5, delay_std), min_delay)
             print('sleeping for {} s ...'.format(round(sleep_seconds, 2)))
             time.sleep(sleep_seconds)
 
         num_after = bot.count()
         print("Retrieved {} tweets with the hash tags {} for a total of {}".format(
-            num_after - num_before, args['hashtags'], num_after))
+            num_after - num_before, hashtags, num_after))
         # bot.tweet(m[:140])
+
+
+if __name__ == '__main__':
+    # get_tweets(['brutalism', 'architecture', 'nasa'])
+    tag_list = ['brutalism', 'architecture', 'nasa']
+    b = Bot()
+    stream(b, tag_list)

@@ -36,7 +36,7 @@ class User(BaseModel):
 
 
 class Tweet(BaseModel):
-    id = pw.BigIntegerField(null=True)
+    tweet_id = pw.BigIntegerField(null=True, unique=True)
     id_str = pw.CharField(null=True)
     user = pw.ForeignKeyField(User, null=True, related_name='tweets')
     source = pw.CharField(null=True)  # e.g. "Twitter for iPhone"
@@ -47,6 +47,8 @@ class Tweet(BaseModel):
     place = pw.ForeignKeyField(Place, null=True)
     verified = pw.BooleanField(null=True)
     favorite_count = pw.IntegerField(default=0)
+    img_url = pw.CharField(null=True)
+
     # tweet_replied_to = pw.ForeignKeyField("Tweet", related_name='replies')
 
 
